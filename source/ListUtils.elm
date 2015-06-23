@@ -1,4 +1,4 @@
-module ListExtras where
+module ListUtils where
 
 import List exposing ( foldl, foldr )
 import Maybe exposing ( Maybe(..) )

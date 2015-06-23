@@ -7,13 +7,12 @@ import Mouse
 import Task exposing ( Task )
 
 import Graphics.Element exposing ( Element )
-import Graphics.Collage exposing ( Form, BasicForm(..) )
+import Graphics.Collage exposing ( Form )
 import Color exposing (..)
 
 import DragAndDrop as Drag
 
 import Tuple exposing ( mapBoth' )
-import ListExtras exposing ( elementAt )
 
 import Ball
 
@@ -32,8 +31,8 @@ transmitter = mailbox False
 ballState : Signal Form
 ballState = 
 
-    let ball = Ball.ball 21 green       -- when the mouse is  
-                                            -- over it.           
+    let ball = Ball.ball 21 green
+                                 
                                      
         receive : Signal (Maybe Drag.Action)-- watches whether the
         receive = Drag.track False          -- mouse is over the
@@ -55,26 +54,54 @@ isWithinRadiusOf (x1, y1) radius (x2, y2) =
                              distance = sqrt <| xsq + ysq
                           in distance <= radius
 
+
+-- hoverable is intended to do much the same thing as
+-- Graphics.Input.hoverable, except it takes a Form rather than an
+-- Element. It detects whether the given Coordinates are within the
+-- boundaries of the given Form (which is assumed to be a
+-- circle[^type]), and sends this information (True or False) to the
+-- given Address[^message]. Naturally you'll want to map it over a Signal or
+-- two and bind the result to a port.
+
+{- [^message]:
+   Graphics.Input.hoverable takes, instead of an Address, a function
+   from a Bool to a Message, --- which fulfills the same purpose and
+   amounts to the same thing, since a Message (if I understand it
+   right) is just a wrapper for the act of sending a thing to some
+   address (that is, the address and thing you passed in to
+   Signal.message). But in what way are Messages better? The
+   documentation suggests that their advantage is that they're an
+   alternative to Tasks, only for sending to Addresses, --- which
+   means you don't need a port, I guess? A port being what allows
+   you to "execute arbitrary Tasks" (I quote the docs for Message
+   from memory), which maybe you don't always want. But then how do
+   you execute / send a Message? That's not clear to me. Graphics.Input,
+   for its part, implements hoverable (and thus this whole Message
+   business) via Native.Graphics.Input, which is to say via Javascript,
+   using Elm's Javascript-facing API. So maybe there is no way to
+   actually send / execute Messages in Elm itself.
+-}
+
 hoverable : Address Bool -> Form -> Coordinates -> Task x ()
 hoverable address aForm coords = send address
                                   <| isWithinRadiusOf
                                        (aForm.x, aForm.y)
-                                       (radius aForm)
+                                       (Ball.radius aForm)
                                        coords
 
 port sender : Signal (Task x ())
-port sender = map2
+port sender =
+           let mousePosition =
+                      map (mapBoth' toFloat) Mouse.position
+               windowCentre  = 
+                      map (mapBoth' <| divideBy 2 << toFloat)
+                                             Window.dimensions
+            in map2
                 (hoverable transmitter.address)
-                ballState
-                (map (mapBoth' toFloat) Mouse.position)
+                (ballState)
+                (map2 Ball.relativeTo
+                      mousePosition
+                      windowCentre)
 
--- this only works if the form is a circle or an ellipse. If it's an
--- ellipse, radius returns the longest radius.
-radius : Form -> Float
-radius aForm = case aForm.form of
-                 FShape _ theShape ->
-                        (fst   <| fromJust (elementAt theShape 0))
-                        - (fst <| fromJust (elementAt theShape 25))
-
-fromJust : Maybe a -> a
-fromJust a = case a of Just a -> a
+divideBy : Float -> Float -> Float
+divideBy = flip (/)

@@ -13,7 +13,7 @@ import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
-import Tuple exposing ( mapBoth' )
+import Tuple exposing ( mapRight, mapBoth' )
 
 import Debug
 
@@ -107,19 +107,21 @@ hoverable address ball coords = send address
                                        coords
 
 port sender : Signal (Task x ())
-port sender =
-           let mousePosition =
-                      map (mapBoth' toFloat) Mouse.position
-               windowCentre  = 
-                      map (mapBoth' <| divideBy 2 << toFloat)
-                                             Window.dimensions
-            in map2
+port sender = map2
                 (hoverable transmitter.address)
                 (ballState)
-                {- (map2 Ball.relativeTo
+                (map2 Ball.relativeTo
                       mousePosition
-                      windowCentre) -}
-                (mousePosition)
+                      windowCentre)
+
+mousePosition : Signal (Float, Float)
+mousePosition = let recombobulate (x, y) h =
+                                             mapBoth' toFloat
+                                                <| (x, h - y) 
+                 in map2 recombobulate Mouse.position Window.height
+
+windowCentre : Signal (Float, Float)
+windowCentre = map (mapBoth' <| divideBy 2 << toFloat) Window.dimensions
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

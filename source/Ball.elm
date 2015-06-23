@@ -36,5 +36,6 @@ update maction ball =
 view : (Int, Int) -> Ball -> Element
 view (width, height) ball = collage width height [toForm ball]
 
+-- relativeTo somewhere origin
 relativeTo : (number, number) -> (number, number) -> (number, number)
 relativeTo (x2, y2) (x1, y1) = (x2 - x1, y2 - y1)

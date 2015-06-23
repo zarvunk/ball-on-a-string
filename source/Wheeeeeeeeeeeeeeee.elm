@@ -7,36 +7,53 @@ import Mouse
 import Task exposing ( Task )
 
 import Graphics.Element exposing ( Element )
-import Graphics.Collage exposing ( Form )
+import Graphics.Collage as Graphics exposing ( Form )
 import Color exposing (..)
+import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
 import Tuple exposing ( mapBoth' )
 
-import Ball
+import Debug
+
+import Ball exposing ( Ball )
 
 main : Signal Element
-main = let mainSignal = map2 (,)
-                            Window.dimensions
-                            ballState
+main = let view (width, height) ball hovering = 
+               Graphics.collage width height [ Ball.toForm ball
+                                             , temperature hovering ]
 
-        in map (uncurry Ball.view) mainSignal
+           temperature hovering = Graphics.text 
+                                    <| fromString
+                                    <| if hovering
+                                        then "Hot!"
+                                        else "Cold..."
+
+        in map3 view
+            Window.dimensions
+            ballState
+            transmitter.signal
 
 
 transmitter : Mailbox Bool
 transmitter = mailbox False
 
     
-ballState : Signal Form
+ballState : Signal Ball
 ballState = 
 
-    let ball = Ball.ball 21 green
+    let ball = { x = 0
+               , y = 0
+               , color = green
+               , radius = 21   }
+                 |> Debug.watch "ball"
                                  
                                      
         receive : Signal (Maybe Drag.Action)-- watches whether the
         receive = Drag.track False          -- mouse is over the
-                        transmitter.signal  -- ball and whether the
+                        <| map (Debug.watch "hoverable")
+                               transmitter.signal  -- ball and whether the
                                             -- mousebutton is down
                                             -- and tells us where
                                             -- the thing is being
@@ -63,7 +80,7 @@ isWithinRadiusOf (x1, y1) radius (x2, y2) =
 -- given Address[^message]. Naturally you'll want to map it over a Signal or
 -- two and bind the result to a port.
 
-{- [^message]:
+{- [^message]: {{{1
    Graphics.Input.hoverable takes, instead of an Address, a function
    from a Bool to a Message, --- which fulfills the same purpose and
    amounts to the same thing, since a Message (if I understand it
@@ -79,14 +96,14 @@ isWithinRadiusOf (x1, y1) radius (x2, y2) =
    for its part, implements hoverable (and thus this whole Message
    business) via Native.Graphics.Input, which is to say via Javascript,
    using Elm's Javascript-facing API. So maybe there is no way to
-   actually send / execute Messages in Elm itself.
+   actually send / execute Messages in Elm itself. }}}1
 -}
 
-hoverable : Address Bool -> Form -> Coordinates -> Task x ()
-hoverable address aForm coords = send address
+hoverable : Address Bool -> Ball -> Coordinates -> Task x ()
+hoverable address ball coords = send address
                                   <| isWithinRadiusOf
-                                       (aForm.x, aForm.y)
-                                       (Ball.radius aForm)
+                                       (ball.x, ball.y)
+                                       ball.radius
                                        coords
 
 port sender : Signal (Task x ())
@@ -99,9 +116,10 @@ port sender =
             in map2
                 (hoverable transmitter.address)
                 (ballState)
-                (map2 Ball.relativeTo
+                {- (map2 Ball.relativeTo
                       mousePosition
-                      windowCentre)
+                      windowCentre) -}
+                (mousePosition)
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

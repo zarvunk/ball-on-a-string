@@ -19,21 +19,11 @@ import Debug
 
 import Ball exposing ( Ball )
 
+
 main : Signal Element
-main = let view (width, height) ball hovering = 
-               Graphics.collage width height [ Ball.toForm ball
-                                             , temperature hovering ]
-
-           temperature hovering = Graphics.text 
-                                    <| fromString
-                                    <| if hovering
-                                        then "Hot!"
-                                        else "Cold..."
-
-        in map3 view
+main = map2 Ball.view
             Window.dimensions
             ballState
-            transmitter.signal
 
 
 transmitter : Mailbox Bool
@@ -46,20 +36,10 @@ ballState =
     let ball = { x = 0
                , y = 0
                , color = green
-               , radius = 21   }
-                 |> Debug.watch "ball"
-                                 
+               , radius = 24   }
+                 -- |> Debug.watch "ball"
                                      
-        receive : Signal (Maybe Drag.Action)-- watches whether the
-        receive = Drag.track False          -- mouse is over the
-                        <| map (Debug.watch "hoverable")
-                               transmitter.signal  -- ball and whether the
-                                            -- mousebutton is down
-                                            -- and tells us where
-                                            -- the thing is being
-                                            -- dragged.
-
-     in foldp Ball.update ball receive
+     in foldp Ball.update ball receiver
 
 
 type alias Coordinates = (Float, Float)
@@ -73,12 +53,10 @@ isWithinRadiusOf (x1, y1) radius (x2, y2) =
 
 
 -- hoverable is intended to do much the same thing as
--- Graphics.Input.hoverable, except it takes a Form rather than an
+-- Graphics.Input.hoverable, except it takes a Ball rather than an
 -- Element. It detects whether the given Coordinates are within the
--- boundaries of the given Form (which is assumed to be a
--- circle[^type]), and sends this information (True or False) to the
--- given Address[^message]. Naturally you'll want to map it over a Signal or
--- two and bind the result to a port.
+-- radius of the given Ball, and sends this information to the
+-- given Address[^message].
 
 {- [^message]: {{{1
    Graphics.Input.hoverable takes, instead of an Address, a function
@@ -105,6 +83,11 @@ hoverable address ball coords = send address
                                        (ball.x, ball.y)
                                        ball.radius
                                        coords
+
+receiver : Signal (Maybe Drag.Action)
+receiver = Drag.track False          
+                -- <| map (Debug.watch "hoverable")
+                       transmitter.signal
 
 port sender : Signal (Task x ())
 port sender = map2

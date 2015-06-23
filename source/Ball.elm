@@ -16,8 +16,6 @@ type alias Object = { object    : Form
 ball : Float -> Color -> Form
 ball radius color = filled color <| circle radius
 
-type alias Coordinates = (Int, Int)
-
 update : Maybe Drag.Action -> Form -> Form
 update maction ball = 
         case maction of

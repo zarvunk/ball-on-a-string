@@ -23,6 +23,7 @@ update maction ball =
             Just action ->
                 case action of
                     Drag.Lift -> 
+                        -- switch from green to purple
                         { ball | color <- Color.complement ball.color }
                     Drag.MoveBy (x, y) ->
                         { ball | x <- ball.x + toFloat x
@@ -31,11 +32,8 @@ update maction ball =
                         -- thinks +y is down, whereas Graphics.Collage
                         -- thinks +y is up.
                     Drag.Release -> 
+                        -- switch back from purple to green
                         { ball | color <- Color.complement ball.color }
 
 view : (Int, Int) -> Ball -> Element
 view (width, height) ball = collage width height [toForm ball]
-
--- relativeTo somewhere origin
-relativeTo : (number, number) -> (number, number) -> (number, number)
-relativeTo (x2, y2) (x1, y1) = (x2 - x1, y2 - y1)

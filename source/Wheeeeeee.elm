@@ -14,6 +14,7 @@ import Text exposing ( fromString )
 import DragAndDrop as Drag
 
 import Tuple exposing ( mapRight, mapBoth' )
+import Maybe.Extra exposing ( isJust, isNothing )
 
 import Keyboard
 import Char
@@ -22,9 +23,10 @@ import Macro exposing (..)
 
 import Ball exposing ( Ball, update )
 
-
+-- the two commented-out lines display most recently recorded macro
+-- (if there is one), for debugging.
 main : Signal Element
-main = -- map2 above 
+main = -- map2 above
             (map2 Ball.view
                   Window.dimensions
                   ballState)
@@ -104,7 +106,28 @@ hoverable address ball coords =
                                                         coords
 
 receiver : Signal (Maybe Drag.Action)
-receiver = Drag.track False transmitter.signal
+receiver = let -- we don't care about the Nothings --- and believe
+               -- me, there are a *lot* of them. They rather clutter
+               -- up the macros. In fact, all those Nothings was
+               -- exactly what was slowing down the macro playback
+               -- and consuming so much memory. Folding them all up
+               -- wouldn't ordinarily be *so* bad --- though, seeing
+               -- as they're effectively no-ops, they'd still slow
+               -- the fold down, --- but the fold combines them as
+               -- *Tasks*, which, insofar as they are basically
+               -- promises, side effects reified into data, are
+               -- essentially lazy; so that all those Nothings were
+               -- not simply kept on the stack and combined as the
+               -- stack unwound, but were in fact turned into
+               -- closures stored on the heap; thus (a) having lots
+               -- of storage overhead, and (b) having to wait to be
+               -- garbage collected. Hence the memory usage kept
+               -- growing. Plus it always took a while to play back
+               -- all those no-op closures. ---Whereas with this
+               -- sieve, macros play back instantly and no lag
+               -- accumulates.
+               sieve = filter isJust Nothing
+            in sieve <| Drag.track False transmitter.signal
 
 port sender : Signal (Task x ())
 port sender = map2

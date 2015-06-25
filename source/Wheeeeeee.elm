@@ -6,7 +6,7 @@ import Mouse
 
 import Task exposing ( Task )
 
-import Graphics.Element exposing ( Element )
+import Graphics.Element exposing ( Element, show, below, above )
 import Graphics.Collage as Graphics exposing ( Form )
 import Color exposing (..)
 import Text exposing ( fromString )
@@ -15,15 +15,23 @@ import DragAndDrop as Drag
 
 import Tuple exposing ( mapRight, mapBoth' )
 
-import Debug
+import Keyboard
+
+import Macro exposing (..)
 
 import Ball exposing ( Ball )
 
 
 main : Signal Element
-main = map2 Ball.view
-            Window.dimensions
-            ballState
+main = map2 above 
+            (map2 Ball.view
+                  Window.dimensions
+                  ballState)
+            (map show currentMacro)
+
+
+currentMacro : Signal (Macro (Maybe Drag.Action))
+currentMacro = record Keyboard.space receiver
 
 
 transmitter : Mailbox Bool

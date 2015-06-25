@@ -33,12 +33,8 @@ main = -- map2 above
             -- (map show currentMacro)
 
 
-transmitter : Mailbox Bool
-transmitter = mailbox False
-
-
 -------------------------------------------------------------------
--- # Macro stuff #
+-- # Macro stuff # {{{1
 
 recording : Signal Bool
 recording = Keyboard.isDown <| Char.toCode 'R'
@@ -70,8 +66,11 @@ notifyIf = filterMap
                 ( \ whether -> if whether
                                   then Just ()
                                   else Nothing ) ()
+-- }}}1
 
-    
+-------------------------------------------------------------------
+-- # Ball stuff # {{{1
+
 ballState : Signal Ball
 ballState = 
     let ball = { x = 0
@@ -84,19 +83,6 @@ ballState =
                        macroTransmitter.signal
 
 
-type alias Point = (Float, Float)
-
--- `isWithinRadiusOf` returns True if the (Euclidean) distance
--- between the two points is less than or equal to the given Float,
--- otherwise returns False.
-isWithinRadiusOf : Point -> Float -> Point -> Bool
-isWithinRadiusOf (x1, y1) radius (x2, y2) =
-                         let xsq = (x1 - x2)^2
-                             ysq = (y1 - y2)^2
-                             distance = sqrt <| xsq + ysq
-                          in distance <= radius
-
-
 -- `hoverable` is intended to do much the same thing as
 -- Graphics.Input.hoverable, except it takes a Ball rather than an
 -- Element. It detects whether the given point is within the
@@ -107,6 +93,13 @@ hoverable address ball coords =
                 send address <| isWithinRadiusOf (ball.x, ball.y)
                                                      ball.radius
                                                         coords
+-- }}}1
+
+-------------------------------------------------------------------
+-- # Signal graph stuff # {{{1
+
+transmitter : Mailbox Bool
+transmitter = mailbox False
 
 receiver : Signal (Maybe Drag.Action)
 receiver = let -- we don't care about the Nothings --- and believe
@@ -143,6 +136,24 @@ port sender = map2
                       -- relative to the top left. This makes the
                       -- mouse position relative to the window
                       -- centre.
+-- }}}1
+
+-------------------------------------------------------------------
+-- # Coordinates stuff # {{{1
+
+type alias Point = (Float, Float)
+
+
+-- `isWithinRadiusOf` returns True if the (Euclidean) distance
+-- between the two points is less than or equal to the given Float,
+-- otherwise returns False.
+isWithinRadiusOf : Point -> Float -> Point -> Bool
+isWithinRadiusOf (x1, y1) radius (x2, y2) =
+                         let xsq = (x1 - x2)^2
+                             ysq = (y1 - y2)^2
+                             distance = sqrt <| xsq + ysq
+                          in distance <= radius
+
 
 -- `relativeTo somewhere origin` calculates what the coordinates
 -- `somewhere` would be relative to `origin`, assuming that both
@@ -167,3 +178,5 @@ windowCentre = map (mapBoth' <| divideBy 2 << toFloat) Window.dimensions
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)
+
+-- }}}1

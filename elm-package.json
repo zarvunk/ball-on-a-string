@@ -1,7 +1,7 @@
 {
     "version": "1.1.0",
-    "summary": "A library for recording the output of a signal over an interval.",
-    "repository": "https://github.com/USER/PROJECT.git",
+    "summary": "A library for recording the output of a signal over time.",
+    "repository": "https://github.com/zarvunk/elm-macro.git",
     "license": "BSD3",
     "source-directories": [
         "source"

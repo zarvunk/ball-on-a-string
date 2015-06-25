@@ -16,26 +16,55 @@ import DragAndDrop as Drag
 import Tuple exposing ( mapRight, mapBoth' )
 
 import Keyboard
+import Char
 
 import Macro exposing (..)
 
-import Ball exposing ( Ball )
+import Ball exposing ( Ball, update )
 
 
 main : Signal Element
-main = map2 above 
+main = -- map2 above 
             (map2 Ball.view
                   Window.dimensions
                   ballState)
-            (map show currentMacro)
+            -- (map show currentMacro)
+
+
+recording : Signal Bool
+recording = Keyboard.isDown <| Char.toCode 'R'
+
+replaying : Signal Bool
+replaying = Keyboard.isDown <| Char.toCode 'P'
 
 
 currentMacro : Signal (Macro (Maybe Drag.Action))
-currentMacro = record Keyboard.space receiver
+currentMacro = record recording receiver
 
 
 transmitter : Mailbox Bool
 transmitter = mailbox False
+
+
+macroTransmitter : Mailbox (Maybe (Drag.Action))
+macroTransmitter = mailbox Nothing
+
+
+port macroSender : Signal (Task x ())
+port macroSender = sampleOn
+                        (notifyIf replaying)
+                        (map (replay macroTransmitter.address)
+                             currentMacro)
+
+
+-- `notifyIf` turns a Signal of Bools into a Signal of nulls
+-- that emits an event every time the given Signal Bool emits
+-- a True.
+notifyIf : Signal Bool -> Signal ()
+notifyIf = filterMap
+                ( \ whether -> if whether
+                                  then Just ()
+                                  else Nothing ) ()
 
     
 ballState : Signal Ball
@@ -44,7 +73,10 @@ ballState =
                , y = 0
                , color = green
                , radius = 24   }
-     in foldp Ball.update ball receiver
+     in foldp update
+              ball
+              <| merge receiver
+                       macroTransmitter.signal
 
 
 type alias Point = (Float, Float)

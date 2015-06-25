@@ -33,6 +33,13 @@ main = -- map2 above
             -- (map show currentMacro)
 
 
+transmitter : Mailbox Bool
+transmitter = mailbox False
+
+
+-------------------------------------------------------------------
+-- # Macro stuff #
+
 recording : Signal Bool
 recording = Keyboard.isDown <| Char.toCode 'R'
 
@@ -42,10 +49,6 @@ replaying = Keyboard.isDown <| Char.toCode 'P'
 
 currentMacro : Signal (Macro (Maybe Drag.Action))
 currentMacro = record recording receiver
-
-
-transmitter : Mailbox Bool
-transmitter = mailbox False
 
 
 macroTransmitter : Mailbox (Maybe (Drag.Action))

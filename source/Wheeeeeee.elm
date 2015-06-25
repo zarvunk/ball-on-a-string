@@ -75,6 +75,8 @@ ballState : Signal Ball
 ballState = 
     let ball = { x = 0
                , y = 0
+               , vx = 0
+               , vy = 0
                , color = green
                , radius = 24   }
      in foldp update

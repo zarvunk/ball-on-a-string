@@ -13,7 +13,7 @@ import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
-import Tuple exposing ( mapRight, mapBoth' )
+import Tuple exposing ( mapRight, mapBoth )
 import Maybe.Extra exposing ( isJust, isNothing )
 
 import Keyboard
@@ -80,7 +80,7 @@ ballState =
                , vy = 0
                , color = green
                , radius = 24   }
-     in foldp update
+     in foldp drag
               ball
               <| merge receiver
                        macroTransmitter.signal
@@ -152,12 +152,12 @@ mousePosition =     -- The other thing about Mouse.position is that
                     -- negative. In other words, we need to flip the
                     -- y-axis relative to the window. Hence
                     -- Window.height.
-                let recombobulate (x, y) h = mapBoth' toFloat
+                let recombobulate (x, y) h = mapBoth toFloat
                                                 <| (x, h - y) 
                  in map2 recombobulate Mouse.position Window.height
 
 windowCentre : Signal (Float, Float)
-windowCentre = map (mapBoth' <| divideBy 2 << toFloat) Window.dimensions
+windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

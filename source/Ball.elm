@@ -3,9 +3,10 @@ module Ball where
 import DragAndDrop as Drag
 
 import Color exposing ( Color )
-import Graphics.Collage exposing (..)
+import Graphics.Collage as Form exposing (..)
 import Graphics.Element exposing (..)
 
+import Tuple exposing (..)
 import Point exposing (..)
 
 
@@ -34,7 +35,7 @@ type alias ForceField =
 toForm : Ball -> Form
 toForm ball = circle ball.radius
                       |> filled ball.color
-                      |> move (ball.x, ball.y)
+                      |> Form.move (ball.x, ball.y)
 
 drag : Maybe Drag.Action -> Entity e -> Entity e
 drag maction thing = 
@@ -45,7 +46,7 @@ drag maction thing =
                     Drag.Lift -> 
                         thing
                     Drag.MoveBy vector ->
-                        move thing <| mapBoth' toFloat vector
+                        move thing <| mapBoth toFloat vector
                     Drag.Release -> 
                         thing
 

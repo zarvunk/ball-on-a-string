@@ -21,6 +21,7 @@ import Char
 
 import Macro exposing (..)
 
+import Point exposing (..)
 import Ball exposing ( Ball, update )
 
 -- the two commented-out lines display most recently recorded macro
@@ -142,26 +143,6 @@ port sender = map2
 
 -------------------------------------------------------------------
 -- # Coordinates stuff # {{{1
-
-type alias Point = (Float, Float)
-
-
--- `isWithinRadiusOf` returns True if the (Euclidean) distance
--- between the two points is less than or equal to the given Float,
--- otherwise returns False.
-isWithinRadiusOf : Point -> Float -> Point -> Bool
-isWithinRadiusOf (x1, y1) radius (x2, y2) =
-                         let xsq = (x1 - x2)^2
-                             ysq = (y1 - y2)^2
-                             distance = sqrt <| xsq + ysq
-                          in distance <= radius
-
-
--- `relativeTo somewhere origin` calculates what the coordinates
--- `somewhere` would be relative to `origin`, assuming that both
--- `somewhere` and `origin` are relative to (0,0).
-relativeTo : (number, number) -> (number, number) -> (number, number)
-relativeTo (x2, y2) (x1, y1) = (x2 - x1, y2 - y1)
 
 mousePosition : Signal (Float, Float)
 mousePosition =     -- The other thing about Mouse.position is that

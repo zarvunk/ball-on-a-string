@@ -1,7 +1,10 @@
 module Macro where
 
-import Signal exposing ( Signal, Address, map, map2, foldp, send )
-import Signal.Extra exposing ( keepThen, keepWhen, sampleWhen, filter )
+import Signal exposing ( Signal, Address, map, map2, foldp, send, sampleOn, constant )
+import Signal.Extra exposing ( keepThen, keepWhen, sampleWhen, switchWhen, filter, foldps )
+import Signal.Extra.Extra exposing ( switchWhenSample )
+
+import Time exposing ( delay, millisecond )
 
 import Task exposing ( Task, andThen )
 
@@ -18,24 +21,29 @@ type alias Macro action = List action
 
 record :  Signal Bool           -- whether or not we're recording;
        -> Signal action         -- a Signal of the actions that we record;
-       -> Signal (Macro action) -- a Signal of recorded macros.
+       -> Signal (Macro action) -- a Signal whose value is the most recently 
+                                -- recorded macro.
 
 record recording actions =
 
         let 
             macroActions =
-                    keepThen recording Nothing
-                            <| map Just actions
+                    switchWhenSample
+                               (recording)
+                               (map Just actions)
+                               (constant Nothing)
 
             prependMaybe ma lista =
                             case ma of
-                                Just a -> a :: lista
-                                Nothing -> lista
+                                Just a ->
+                                    ([], a :: lista)
+                                Nothing ->
+                                    (lista, [])
 
-            macroSignal = foldp prependMaybe [] macroActions
+            macroSignal = foldps prependMaybe ([], []) macroActions
 
          in 
-            keepWhen (map not recording) [] macroSignal
+            sampleWhen (map not recording) [] macroSignal
 
 
 type alias NamedMacro action =
@@ -70,7 +78,6 @@ replay address macro =
                            macro
 
 -- a utility function that simply sequences two Tasks,
--- where the second Task does not depend on the return
--- value of the first.
+-- where the second Task does not depend on the first.
 and : Task x () -> Task x a -> Task x a
 and task1 task2 = task1 `andThen` \ () -> task2

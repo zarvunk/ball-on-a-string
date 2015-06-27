@@ -13,7 +13,7 @@ import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
-import Tuple exposing ( mapRight, mapBoth' )
+import Tuple exposing ( mapRight, mapBoth )
 import Maybe.Extra exposing ( isJust, isNothing )
 
 import Keyboard
@@ -21,7 +21,8 @@ import Char
 
 import Macro exposing (..)
 
-import Ball exposing ( Ball, update )
+import Point exposing (..)
+import Ball exposing ( Ball, drag )
 
 -- the two commented-out lines display most recently recorded macro
 -- (if there is one), for debugging.
@@ -75,9 +76,11 @@ ballState : Signal Ball
 ballState = 
     let ball = { x = 0
                , y = 0
+               , vx = 0
+               , vy = 0
                , color = green
                , radius = 24   }
-     in foldp update
+     in foldp drag
               ball
               <| merge receiver
                        macroTransmitter.signal
@@ -141,26 +144,6 @@ port sender = map2
 -------------------------------------------------------------------
 -- # Coordinates stuff # {{{1
 
-type alias Point = (Float, Float)
-
-
--- `isWithinRadiusOf` returns True if the (Euclidean) distance
--- between the two points is less than or equal to the given Float,
--- otherwise returns False.
-isWithinRadiusOf : Point -> Float -> Point -> Bool
-isWithinRadiusOf (x1, y1) radius (x2, y2) =
-                         let xsq = (x1 - x2)^2
-                             ysq = (y1 - y2)^2
-                             distance = sqrt <| xsq + ysq
-                          in distance <= radius
-
-
--- `relativeTo somewhere origin` calculates what the coordinates
--- `somewhere` would be relative to `origin`, assuming that both
--- `somewhere` and `origin` are relative to (0,0).
-relativeTo : (number, number) -> (number, number) -> (number, number)
-relativeTo (x2, y2) (x1, y1) = (x2 - x1, y2 - y1)
-
 mousePosition : Signal (Float, Float)
 mousePosition =     -- The other thing about Mouse.position is that
                     -- its y-coordinate is the positive distance down
@@ -169,12 +152,12 @@ mousePosition =     -- The other thing about Mouse.position is that
                     -- negative. In other words, we need to flip the
                     -- y-axis relative to the window. Hence
                     -- Window.height.
-                let recombobulate (x, y) h = mapBoth' toFloat
+                let recombobulate (x, y) h = mapBoth toFloat
                                                 <| (x, h - y) 
                  in map2 recombobulate Mouse.position Window.height
 
 windowCentre : Signal (Float, Float)
-windowCentre = map (mapBoth' <| divideBy 2 << toFloat) Window.dimensions
+windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

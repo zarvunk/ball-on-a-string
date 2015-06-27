@@ -6,6 +6,8 @@ import Color exposing ( Color )
 import Graphics.Collage as Form exposing (..)
 import Graphics.Element exposing (..)
 
+import Time exposing ( Time )
+
 import Tuple exposing (..)
 import Point exposing (..)
 
@@ -13,17 +15,17 @@ import Point exposing (..)
 type alias Entity e = { e | x : Float
                           , y : Float }
 
-type alias Ball = { x : Float
-                  , y : Float
-                  , vx : Float
-                  , vy : Float
-                  , color : Color
+type alias Body b =
+             Entity { b | vx : Float
+                        , vy : Float }
+
+type alias Ball =
+             Body { color : Color
                   , radius : Float }
 
 type alias ForceField = 
-            { x : Float
-            , y : Float
-            , accelAt :  Float -- the distance from an entity to
+     Entity {
+              accelAt :  Float -- the distance from an entity to
                                -- the locus of the field;
                       -> Float -- the change in the entity's
                                -- velocity (in the direction of the
@@ -46,17 +48,33 @@ drag maction thing =
                     Drag.Lift -> 
                         thing
                     Drag.MoveBy vector ->
-                        move thing <| mapBoth toFloat vector
+                        move thing <| mapBoth toFloat
+                                   <| mapRight negate vector
+                        -- we negate y because (apparently) DragAndDrop
+                        -- thinks +y is down, whereas Graphics.Collage
+                        -- thinks +y is up.
                     Drag.Release -> 
                         thing
 
 move : Entity e -> Point -> Entity e
 move thing (x, y) =
                         { thing | x <- thing.x + x
-                                , y <- thing.y - y }
-                        -- we negate y because (apparently) DragAndDrop
-                        -- thinks +y is down, whereas Graphics.Collage
-                        -- thinks +y is up.
+                                , y <- thing.y + y }
+
+step : Time -> Body b -> Body b
+step dt body =
+               move body <| mapBoth ((*) dt) (body.vx, body.vy)
+
+actOn : ForceField -> Time -> Body b -> Body b
+actOn field dt body =
+                      let
+                          ax = field.accelAt <| field.x - body.x
+                          ay = field.accelAt <| field.y - body.y
+                          dvx = ax * dt
+                          dvy = ay * dt
+                       in
+                          { body | vx <- body.vx + dvx
+                                 , vy <- body.vy + dvy }
 
 
 view : (Int, Int) -> Ball -> Element

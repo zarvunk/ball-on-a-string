@@ -92,8 +92,12 @@ ballState =
                , color = green
                , radius = 24   }
 
+        surface = 0.002
+
         update (field, dt) body =
-               actOn field dt body |> step dt
+             body |> actOn field dt
+                  |> applyFriction surface dt
+                  |> step dt
 
         confluence = map2 (,)
 
@@ -105,7 +109,7 @@ ballState =
 timestream : Signal Time
 timestream = fps 12
 
-elasticState : Signal ForceField
+elasticState : Signal (Field {})
 elasticState = 
     let elastic =
                { x = 0

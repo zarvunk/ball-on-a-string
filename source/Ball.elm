@@ -20,11 +20,14 @@ type alias Body b =
                         , vy : Float }
 
 type alias Ball =
-             Body { color : Color
+             Body (Circular {})
+
+type alias Circular c =
+              { c | color : Color
                   , radius : Float }
 
-type alias ForceField = 
-     Entity {
+type alias Field f = 
+     Entity { f |
               accelAt :  Float -- the distance from an entity to
                                -- the locus of the field;
                       -> Float -- the change in the entity's
@@ -34,7 +37,7 @@ type alias ForceField =
             }
 
 
-toForm : Ball -> Form
+toForm : Entity (Circular c) -> Form
 toForm ball = circle ball.radius
                       |> filled ball.color
                       |> Form.move (ball.x, ball.y)
@@ -65,7 +68,7 @@ step : Time -> Body b -> Body b
 step dt body =
                move body <| mapBoth ((*) dt) (body.vx, body.vy)
 
-actOn : ForceField -> Time -> Body b -> Body b
+actOn : Field f -> Time -> Body b -> Body b
 actOn field dt body =
                       let
                           ax = field.accelAt <| field.x - body.x
@@ -76,6 +79,23 @@ actOn field dt body =
                           { body | vx <- body.vx + dvx
                                  , vy <- body.vy + dvy }
 
+decelerate : Float -> Float -> Float
+decelerate dv v = 
+                  let 
+                      dv' = min (abs v) dv
+                   in 
+                      if v >= 0
+                         then v - dv'
+                         else v + dv'
 
-view : (Int, Int) -> Ball -> Element
+applyFriction : Float -> Time -> Body b -> Body b
+applyFriction decel dt body =
+            let
+                dv = decel * dt
+             in 
+                { body | vx <- decelerate dv body.vx
+                       , vy <- decelerate dv body.vy }
+
+
+view : (Int, Int) -> Entity (Circular c) -> Element
 view (width, height) ball = collage width height [toForm ball]

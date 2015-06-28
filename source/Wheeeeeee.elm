@@ -30,12 +30,11 @@ import Macro exposing (..)
 import Point exposing (..)
 import Ball exposing (..)
 
--- the two commented-out lines display most recently recorded macro
--- (if there is one), for debugging.
+{- the commented-out lines display useful info for debugging. -}
 main : Signal Element
 main = 
        -- mapMany (flow down)
-       --     [ 
+            -- [
               (map2 Ball.view
                   Window.dimensions
                   ballState)
@@ -101,25 +100,27 @@ ballState =
 
         confluence = map2 (,)
 
-     in foldp update ball <|
-            confluence
+     in foldp update ball
+           <| confluence
                 (sampleOn timestream elasticState)
                 (timestream)
 
 timestream : Signal Time
-timestream = fps 12
+timestream = fps 30
 
 elasticState : Signal (Field {})
 elasticState = 
+
     let elastic =
                { x = 0
                , y = 0
-               , accelAt d = d * 0.0001
+               , accelAt d = d * 0.00008
                }
-     in foldp drag
-              elastic
-              <| merge receiver
-                       macroTransmitter.signal
+
+     in foldp drag elastic
+           <| merge
+                receiver
+                macroTransmitter.signal
 
 
 -- `hoverable` is intended to do much the same thing as
@@ -129,9 +130,11 @@ elasticState =
 -- given Address.
 hoverable : Address Bool -> Ball -> Point -> Task x ()
 hoverable address ball coords =
-                send address <| isWithinRadiusOf (ball.x, ball.y)
-                                                     ball.radius
-                                                        coords
+                send address
+                   <| isWithinRadiusOf
+                        (ball.x, ball.y)
+                        ball.radius
+                        coords
 -- }}}1
 
 -------------------------------------------------------------------
@@ -167,14 +170,8 @@ receiver = let -- we don't care about the Nothings --- and believe
 port sender : Signal (Task x ())
 port sender = map2
                 (hoverable transmitter.address)
-                (ballState)
-                (map2 relativeTo    -- because we render the Ball
-                      mousePosition -- as a Form, its coordinates
-                      windowCentre) -- are relative to the centre
-                      -- of the window, whereas Mouse.position is
-                      -- relative to the top left. This makes the
-                      -- mouse position relative to the window
-                      -- centre.
+                ballState
+                relativeMousePosition
 -- }}}1
 
 -------------------------------------------------------------------
@@ -194,6 +191,16 @@ mousePosition =     -- The other thing about Mouse.position is that
 
 windowCentre : Signal (Float, Float)
 windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
+
+relativeMousePosition : Signal (Float, Float)
+relativeMousePosition =
+                 map2 relativeTo    -- because we render the Ball
+                      mousePosition -- as a Form, its coordinates
+                      windowCentre  -- are relative to the centre
+                      -- of the window, whereas Mouse.position is
+                      -- relative to the top left. This makes the
+                      -- mouse position relative to the window
+                      -- centre.
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

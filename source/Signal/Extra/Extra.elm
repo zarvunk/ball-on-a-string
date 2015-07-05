@@ -12,7 +12,8 @@ initSignal s =
 
 
 -- like switchWhen and switchSample, except it samples the *second*
--- Signal but *not* the first.
+-- Signal but *not* the first. In certain situations this turns out
+-- to be vitally important. See notes in Macro.elm.
 switchWhenSample :  Signal Bool -> Signal a -> Signal a -> Signal a
 switchWhenSample b l r = switchHelper keepWhen sampleWhen b l r
 

@@ -1,7 +1,13 @@
 module Macro where
 
-import Signal exposing ( Signal, Address, map, map2, foldp, send, sampleOn, constant )
-import Signal.Extra exposing ( keepThen, keepWhen, sampleWhen, switchWhen, filter, foldps )
+import Signal exposing ( Signal, Address
+                       , map, map2, foldp
+                       , send, sampleOn, constant )
+
+import Signal.Extra exposing ( keepThen, keepWhen
+                             , sampleWhen, switchWhen
+                             , filter, foldps )
+
 import Signal.Extra.Extra exposing ( switchWhenSample )
 
 import Time exposing ( delay, millisecond )
@@ -146,8 +152,8 @@ enough that you can see how this mechanism works.
 -- {{{1
 
 type alias NamedMacro action =
-                    { macro : Macro action
-                    , name  : String       }
+                            ( String
+                            , Macro action )
 
 recordNamed :  Signal (Maybe String)      -- whether or not we're recording,
                                           -- and, if so, what is the name of
@@ -160,9 +166,14 @@ recordNamed mNames actions =
             recording = map isJust mNames
             macros = record recording actions
             namedMacro macro name =
-                        { macro = macro, name = name }
+                        (name, macro)
          in 
             map2 namedMacro macros <| filter "" mNames
+
+-- }}}1
+
+--------------------------------------------------------------------------
+
 
 
 replay :  Address action -- the address to which to send the actions;

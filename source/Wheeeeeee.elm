@@ -28,14 +28,14 @@ import Char
 import Macro exposing (..)
 
 import Point exposing (..)
-import Ball exposing (..)
+import Physics exposing (..)
 
 {- the commented-out lines display useful info for debugging. -}
 main : Signal Element
 main = 
        -- mapMany (flow down)
             -- [
-              (map2 Ball.view
+              (map2 Physics.view
                   Window.dimensions
                   ballState)
             -- , (map show transmitter.signal)
@@ -95,7 +95,6 @@ ballState =
 
         update (field, dt) body =
              body |> actOn field dt
-                  |> applyFriction surface dt
                   |> step dt
 
         confluence = map2 (,)
@@ -114,7 +113,7 @@ elasticState =
     let elastic =
                { x = 0
                , y = 0
-               , accelAt d = d * 0.00008
+               , accelAt d = d * 0.0001
                }
 
      in foldp drag elastic

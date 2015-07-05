@@ -1,12 +1,18 @@
 module Wheeeeeee where
 
 import Signal exposing (..)
+-- import Signal.Extra exposing ( mapMany )
 import Window
 import Mouse
+import Time exposing ( Time, fps )
 
 import Task exposing ( Task )
 
-import Graphics.Element exposing ( Element, show, below, above )
+import Graphics.Element exposing ( Element, show
+                                 {- , below, above
+                                 , down, up
+                                 , flow -}
+                                 )
 import Graphics.Collage as Graphics exposing ( Form )
 import Color exposing (..)
 import Text exposing ( fromString )
@@ -22,16 +28,19 @@ import Char
 import Macro exposing (..)
 
 import Point exposing (..)
-import Ball exposing ( Ball, drag )
+import Ball exposing (..)
 
--- the two commented-out lines display most recently recorded macro
--- (if there is one), for debugging.
+{- the commented-out lines display useful info for debugging. -}
 main : Signal Element
-main = -- map2 above
-            (map2 Ball.view
+main = 
+       -- mapMany (flow down)
+            -- [
+              (map2 Ball.view
                   Window.dimensions
                   ballState)
-            -- (map show currentMacro)
+            -- , (map show transmitter.signal)
+            -- , (map show ballState)
+            -- , (map show elasticState) ]
 
 
 -------------------------------------------------------------------
@@ -74,16 +83,44 @@ notifyIf = filterMap
 
 ballState : Signal Ball
 ballState = 
+
     let ball = { x = 0
                , y = 0
                , vx = 0
                , vy = 0
                , color = green
                , radius = 24   }
-     in foldp drag
-              ball
-              <| merge receiver
-                       macroTransmitter.signal
+
+        surface = 0.002
+
+        update (field, dt) body =
+             body |> actOn field dt
+                  |> applyFriction surface dt
+                  |> step dt
+
+        confluence = map2 (,)
+
+     in foldp update ball
+           <| confluence
+                (sampleOn timestream elasticState)
+                (timestream)
+
+timestream : Signal Time
+timestream = fps 30
+
+elasticState : Signal (Field {})
+elasticState = 
+
+    let elastic =
+               { x = 0
+               , y = 0
+               , accelAt d = d * 0.00008
+               }
+
+     in foldp drag elastic
+           <| merge
+                receiver
+                macroTransmitter.signal
 
 
 -- `hoverable` is intended to do much the same thing as
@@ -93,9 +130,11 @@ ballState =
 -- given Address.
 hoverable : Address Bool -> Ball -> Point -> Task x ()
 hoverable address ball coords =
-                send address <| isWithinRadiusOf (ball.x, ball.y)
-                                                     ball.radius
-                                                        coords
+                send address
+                   <| isWithinRadiusOf
+                        (ball.x, ball.y)
+                        ball.radius
+                        coords
 -- }}}1
 
 -------------------------------------------------------------------
@@ -131,14 +170,8 @@ receiver = let -- we don't care about the Nothings --- and believe
 port sender : Signal (Task x ())
 port sender = map2
                 (hoverable transmitter.address)
-                (ballState)
-                (map2 relativeTo    -- because we render the Ball
-                      mousePosition -- as a Form, its coordinates
-                      windowCentre) -- are relative to the centre
-                      -- of the window, whereas Mouse.position is
-                      -- relative to the top left. This makes the
-                      -- mouse position relative to the window
-                      -- centre.
+                ballState
+                relativeMousePosition
 -- }}}1
 
 -------------------------------------------------------------------
@@ -158,6 +191,16 @@ mousePosition =     -- The other thing about Mouse.position is that
 
 windowCentre : Signal (Float, Float)
 windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
+
+relativeMousePosition : Signal (Float, Float)
+relativeMousePosition =
+                 map2 relativeTo    -- because we render the Ball
+                      mousePosition -- as a Form, its coordinates
+                      windowCentre  -- are relative to the centre
+                      -- of the window, whereas Mouse.position is
+                      -- relative to the top left. This makes the
+                      -- mouse position relative to the window
+                      -- centre.
 
 divideBy : Float -> Float -> Float
 divideBy = flip (/)

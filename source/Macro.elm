@@ -1,4 +1,23 @@
-module Macro where
+module Macro ( Macro, NamedMacro
+             , record, recordNamed
+             , replay
+             ) where
+
+{-| A macro is that wherewith you record the output of a
+Signal over a certain period of time.
+
+# Macros
+@docs Macro
+
+# Recording
+@docs record
+
+# Replaying
+@docs replay
+
+# Named macros
+@docs NamedMacro, recordNamed
+-}
 
 import Signal exposing ( Signal, Address
                        , map, map2, foldp
@@ -10,9 +29,8 @@ import Signal.Extra exposing ( keepThen, keepWhen
 
 import Signal.Extra.Extra exposing ( switchWhenSample )
 
-import Time exposing ( delay, millisecond )
-
 import Task exposing ( Task, andThen )
+import Task.And exposing ( and )
 
 import List
 
@@ -20,11 +38,25 @@ import Maybe exposing ( Maybe(..) )
 import Maybe.Extra exposing ( isJust, isNothing )
 
 
--- A macro is just a list of actions, whatever your action type may be.
--- The functions in this module all build up macros from right to left, 
--- which means right is earlier and left is later.
+{-| A macro is just a list of actions, whatever your action type may be.
+The functions in this module all build up macros from right to left, 
+which means right is earlier and left is later.
+-}
 type alias Macro action = List action
 
+{-| This does about what you'd expect. The `Signal action` is the
+Signal that you're recording from; and the `Signal Bool` controls
+when recording happens: When it emits True, a recording session
+starts; and the session ends when the signal emits False.
+
+As soon as a recording session finishes, the resulting
+`Signal (Macro action)` emits the macro that was just recorded.
+
+To get a Signal that produces a list of all the macros recorded so
+for, you would do something like
+
+    foldp (::) [] <| record areWeRecording whatWeWouldRecordFrom
+-}
 record :  Signal Bool           -- whether or not we're recording;
        -> Signal action         -- a Signal of the actions that we record;
        -> Signal (Macro action) -- a Signal whose value is the most recently 
@@ -151,10 +183,21 @@ enough that you can see how this mechanism works.
 
 -- {{{1
 
+{-| A `NamedMacro` is a macro with a name. Simple as that.
+-}
 type alias NamedMacro action =
                             ( String
                             , Macro action )
 
+{-| Same deal as `record`, above,---except signaling `recordNamed` to
+start recording amounts to telling it what to call the
+currently-recording macro.
+
+It wouldn't be hard to fold the resulting `Signal (NamedMacro action)`
+into a `Signal (Dict String (Macro action))`. Something in the vein of
+
+    foldp (uncurry Dict.insert) Dict.empty <| recordNamed nameSig actSig
+-}
 recordNamed :  Signal (Maybe String)      -- whether or not we're recording,
                                           -- and, if so, what is the name of
                                           -- the currently recording macro;
@@ -176,6 +219,17 @@ recordNamed mNames actions =
 
 
 
+{-| Storing a macro (or e.g. a list of macros) and conditionally
+propogating it (or one of them) later on is admittedly trivial; but
+`replay` is handy if you want to send the actions in the macro back
+through the same Signal they were recorded from. It sends each of the
+macro's actions in turn to an address---or, rather, produces a Task
+that does exactly that.
+
+    port timestwo =
+        Signal.map (replay someMailbox.address) <| record recYesNo someMailbox.signal
+
+-}
 replay :  Address action -- the address to which to send the actions;
        -> Macro action   -- the macro whose actions will be replayed in order;
        -> Task x ()      -- a Task that executes the replay.
@@ -186,8 +240,3 @@ replay address macro =
              in List.foldr append
                            ( Task.succeed () )
                            macro
-
--- a utility function that simply sequences two Tasks,
--- where the second Task does not depend on the first.
-and : Task x () -> Task x a -> Task x a
-and task1 task2 = task1 `andThen` \ () -> task2

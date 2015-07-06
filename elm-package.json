@@ -1,14 +1,19 @@
 {
-    "version": "1.1.1",
+    "version": "1.2.1",
     "summary": "Some functions for recording the output of a signal over time.",
     "repository": "https://github.com/zarvunk/elm-macro.git",
     "license": "BSD3",
     "source-directories": [
         "source"
     ],
-    "exposed-modules": [],
+    "exposed-modules": [
+        "Macro",
+        "Macro.Timed",
+        "Task.And"
+    ],
     "dependencies": {
         "Apanatshka/elm-signal-extra": "5.1.1 <= v < 6.0.0",
+        "TheSeamau5/elm-task-extra": "2.0.0 <= v < 3.0.0",
         "circuithub/elm-maybe-extra": "1.3.0 <= v < 2.0.0",
         "elm-lang/core": "2.1.0 <= v < 3.0.0"
     },

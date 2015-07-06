@@ -24,20 +24,21 @@ import Signal exposing ( Signal, Address
                        , map, map2, foldp
                        , send, sampleOn, constant )
 
-import Signal.Extra exposing ( filter )
+import Signal.Extra exposing ( sampleWhen, filter
+                             , foldps, foldps' )
+
+import Signal.Extra.Extra exposing ( switchWhenSample )
 
 import Task exposing ( Task, andThen )
 
 import Time exposing ( Time, timestamp )
 
 import Task.Extra exposing ( delay )
-import Signal.Extra exposing ( foldps' )
 import Task.And exposing ( and )
 
 import Maybe exposing ( Maybe(..) )
 import Maybe.Extra exposing ( isJust, isNothing )
 
-import Macro
 
 
 {-| A timed macro is just a list of actions with delta timestamps,
@@ -68,20 +69,66 @@ record :  Signal Bool           -- whether or not we're recording;
        -> Signal (Macro action) -- a Signal whose value is the most recently 
                                 -- recorded macro.
 record recording actions =
-        
-    let
-        timestampedActions = 
-            timestamp actions
-                |> foldps' relativeTime commenceRelativeTime
+
+    let 
+        macroActions =
+
+                -- see note [^keepThen] in Macro.elm.
+                switchWhenSample
+
+                           -- tells us when a recording session
+                           -- starts and ends.
+                           (recording)
+
+                           -- timestamp 'em.
+                           (map Just <| timestamp actions)
+
+                           -- emitted once right when we finish a
+                           -- recording session.
+                           (constant Nothing)
+
 
         relativeTime (absTime, action) prevAbsTime =
                     ((absTime - prevAbsTime, action), absTime)
 
-        commenceRelativeTime (absTime, action) =
-                    ((0, action), 0)
+
+        -- see note [^reset] in Macro.elm.
+        prependMaybeTimestamped mTaction (prevAbsTime, lista) =
+
+                case (lista, mTaction) of
+
+                    -- if we're just starting a recording
+                    -- session, then set the time-delta of
+                    -- the (first) action to zero.
+
+                    ([], Just (absTime, action)) ->
+                        ([], (absTime, (0, action) :: lista))
+
+                    -- add the given action to the
+                    -- currently-recording macro; don't
+                    -- pass the macro onward just yet.
+                    (_, Just taction) ->
+                        let (timedAction, absTime) =
+                                relativeTime taction prevAbsTime
+                         in ([], (absTime, timedAction :: lista))
+
+                    -- we've just stopped recording;
+                    -- return the just-recorded macro and
+                    -- start afresh.
+                    (_, Nothing) ->
+                        (lista, (0, []))
+
+
+        macroSignal = foldps prependMaybeTimestamped
+                             ([], (0, []))
+                             macroActions
 
      in 
-        Macro.record recording timestampedActions
+        -- as soon as we finish recording, sample the
+        -- just-recorded macro; otherwise empty list.
+        -- This may in fact be redundant:---see
+        -- `prependMaybe`, above. 
+        sampleWhen (map not recording) [] macroSignal
 
 
 

@@ -13,9 +13,7 @@ import Graphics.Element exposing ( Element, show
                                  , down, up
                                  , flow -}
                                  )
-import Graphics.Collage as Graphics exposing ( Form )
 import Color exposing (..)
-import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
@@ -25,7 +23,7 @@ import Maybe.Extra exposing ( isJust, isNothing )
 import Keyboard
 import Char
 
-import Macro exposing (..)
+import Macro.Timed exposing (..)
 
 import Point exposing (..)
 import Ball exposing (..)

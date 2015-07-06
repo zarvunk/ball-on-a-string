@@ -7,9 +7,7 @@ import Mouse
 import Task exposing ( Task )
 
 import Graphics.Element exposing ( Element, show, below, above )
-import Graphics.Collage as Graphics exposing ( Form )
 import Color exposing (..)
-import Text exposing ( fromString )
 
 import DragAndDrop as Drag
 
@@ -19,7 +17,7 @@ import Maybe.Extra exposing ( isJust, isNothing )
 import Keyboard
 import Char
 
-import Macro exposing (..)
+import Macro.Timed exposing (..)
 
 import Ball exposing ( Ball, update )
 

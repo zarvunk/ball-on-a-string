@@ -1,19 +1,17 @@
 module Wheeeeeee where
 
 import Signal exposing (..)
--- import Signal.Extra exposing ( mapMany )
+import Signal.Extra exposing ( mapMany, zip )
 import Window
 import Mouse
 import Time exposing ( Time, fps )
 
+import Color
+import List
+
 import Task exposing ( Task )
 
-import Graphics.Element exposing ( Element, show
-                                 {- , below, above
-                                 , down, up
-                                 , flow -}
-                                 )
-import Color exposing (..)
+import Html exposing ( Html )
 
 import DragAndDrop as Drag
 
@@ -29,17 +27,23 @@ import Point exposing (..)
 import Ball exposing (..)
 
 {- the commented-out lines display useful info for debugging. -}
-main : Signal Element
+main : Signal Html
 main = 
-       -- mapMany (flow down)
-            -- [
-              (map2 Ball.view
+       mapMany (Html.div []) <|
+         (::)
+            (map2 Ball.view
                   Window.dimensions
                   ballState)
-            -- , (map show transmitter.signal)
-            -- , (map show ballState)
-            -- , (map show elasticState) ]
+            (List.map (Signal.map (Html.p [] << singleton << Html.text))
+              [
+                map toString transmitter.signal
+              , map toString ballState
+              , map toString elasticState
+              ]
+            )
 
+singleton : a -> List a
+singleton thing = [thing]
 
 -------------------------------------------------------------------
 -- # Macro stuff # {{{1
@@ -86,7 +90,7 @@ ballState =
                , y = 0
                , vx = 0
                , vy = 0
-               , color = green
+               , color = Color.green
                , radius = 24   }
 
         surface = 0.002
@@ -96,10 +100,8 @@ ballState =
                   |> applyFriction surface dt
                   |> step dt
 
-        confluence = map2 (,)
-
      in foldp update ball
-           <| confluence
+           <| zip
                 (sampleOn timestream elasticState)
                 (timestream)
 
@@ -110,8 +112,8 @@ elasticState : Signal (Field {})
 elasticState = 
 
     let elastic =
-               { x = 0
-               , y = 0
+               { x = 78
+               , y = 78
                , accelAt d = d * 0.00008
                }
 
@@ -169,7 +171,7 @@ port sender : Signal (Task x ())
 port sender = map2
                 (hoverable transmitter.address)
                 ballState
-                relativeMousePosition
+                mousePosition
 -- }}}1
 
 -------------------------------------------------------------------
@@ -183,24 +185,8 @@ mousePosition =     -- The other thing about Mouse.position is that
                     -- negative. In other words, we need to flip the
                     -- y-axis relative to the window. Hence
                     -- Window.height.
-                let recombobulate (x, y) h = mapBoth toFloat
+                    {- let recombobulate (x, y) h = mapBoth toFloat
                                                 <| (x, h - y) 
-                 in map2 recombobulate Mouse.position Window.height
-
-windowCentre : Signal (Float, Float)
-windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
-
-relativeMousePosition : Signal (Float, Float)
-relativeMousePosition =
-                 map2 relativeTo    -- because we render the Ball
-                      mousePosition -- as a Form, its coordinates
-                      windowCentre  -- are relative to the centre
-                      -- of the window, whereas Mouse.position is
-                      -- relative to the top left. This makes the
-                      -- mouse position relative to the window
-                      -- centre.
-
-divideBy : Float -> Float -> Float
-divideBy = flip (/)
+                 in map2 recombobulate -} map (mapBoth toFloat) Mouse.position -- Window.height
 
 -- }}}1

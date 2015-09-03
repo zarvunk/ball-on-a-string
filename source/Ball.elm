@@ -3,8 +3,9 @@ module Ball where
 import DragAndDrop as Drag
 
 import Color exposing ( Color )
-import Graphics.Collage as Form exposing (..)
-import Graphics.Element exposing (..)
+import Svg exposing ( Svg, svg, circle )
+import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
+import Html exposing ( Html )
 
 import Time exposing ( Time )
 
@@ -37,11 +38,6 @@ type alias Field f =
             }
 
 
-toForm : Entity (Circular c) -> Form
-toForm ball = circle ball.radius
-                      |> filled ball.color
-                      |> Form.move (ball.x, ball.y)
-
 drag : Maybe Drag.Action -> Entity e -> Entity e
 drag maction thing = 
         case maction of
@@ -51,11 +47,7 @@ drag maction thing =
                     Drag.Lift -> 
                         thing
                     Drag.MoveBy vector ->
-                        move thing <| mapBoth toFloat
-                                   <| mapRight negate vector
-                        -- we negate y because (apparently) DragAndDrop
-                        -- thinks +y is down, whereas Graphics.Collage
-                        -- thinks +y is up.
+                        move thing <| mapBoth toFloat vector
                     Drag.Release -> 
                         thing
 
@@ -97,5 +89,18 @@ applyFriction decel dt body =
                        , vy <- decelerate dv body.vy }
 
 
-view : (Int, Int) -> Entity (Circular c) -> Element
-view (width, height) ball = collage width height [toForm ball]
+view : (Int, Int) -> Entity (Circular c) -> Html
+view (width, height) ball =
+        svg [
+              Attrs.width  <| toString width
+            , Attrs.height <| toString height
+            ]
+            [
+              Svg.circle [
+                  cx <| toString ball.x
+                , cy <| toString ball.y
+                , r  <| toString ball.radius
+                , color <| toString ball.color
+                ]
+                []
+            ]

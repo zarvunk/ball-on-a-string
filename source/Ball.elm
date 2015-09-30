@@ -6,7 +6,9 @@ import Color exposing ( Color )
 import Svg exposing ( Svg, svg, circle )
 import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
 import Html exposing ( Html )
+import Html.Events exposing ( onMouseEnter, onMouseLeave )
 
+import Signal exposing ( Address )
 import Time exposing ( Time )
 
 import Tuple exposing (..)
@@ -89,8 +91,8 @@ applyFriction decel dt body =
                        , vy <- decelerate dv body.vy }
 
 
-view : (Int, Int) -> Entity (Circular c) -> Html
-view (width, height) ball =
+view : Address Bool -> (Int, Int) -> Entity (Circular c) -> Html
+view address (width, height) ball =
         svg [
               Attrs.width  <| toString width
             , Attrs.height <| toString height
@@ -101,6 +103,8 @@ view (width, height) ball =
                 , cy <| toString ball.y
                 , r  <| toString ball.radius
                 , color <| toString ball.color
+                , onMouseEnter address True
+                , onMouseLeave address False
                 ]
                 []
             ]

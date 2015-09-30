@@ -29,21 +29,9 @@ import Ball exposing (..)
 {- the commented-out lines display useful info for debugging. -}
 main : Signal Html
 main = 
-       mapMany (Html.div []) <|
-         (::)
-            (map2 Ball.view
+            (map2 (Ball.view transmitter.address)
                   Window.dimensions
                   ballState)
-            (List.map (Signal.map (Html.p [] << singleton << Html.text))
-              [
-                map toString transmitter.signal
-              , map toString ballState
-              , map toString elasticState
-              ]
-            )
-
-singleton : a -> List a
-singleton thing = [thing]
 
 -------------------------------------------------------------------
 -- # Macro stuff # {{{1
@@ -122,19 +110,6 @@ elasticState =
                 receiver
                 macroTransmitter.signal
 
-
--- `hoverable` is intended to do much the same thing as
--- Graphics.Input.hoverable, except it takes a Ball rather than an
--- Element. It detects whether the given point is within the
--- radius of the given Ball, and sends this information to the
--- given Address.
-hoverable : Address Bool -> Ball -> Point -> Task x ()
-hoverable address ball coords =
-                send address
-                   <| isWithinRadiusOf
-                        (ball.x, ball.y)
-                        ball.radius
-                        coords
 -- }}}1
 
 -------------------------------------------------------------------
@@ -167,26 +142,13 @@ receiver = let -- we don't care about the Nothings --- and believe
                sieve = filter isJust Nothing
             in sieve <| Drag.track False transmitter.signal
 
-port sender : Signal (Task x ())
-port sender = map2
-                (hoverable transmitter.address)
-                ballState
-                mousePosition
 -- }}}1
 
 -------------------------------------------------------------------
 -- # Coordinates stuff # {{{1
 
 mousePosition : Signal (Float, Float)
-mousePosition =     -- The other thing about Mouse.position is that
-                    -- its y-coordinate is the positive distance down
-                    -- from the top of the window; but from a Form's
-                    -- perspective, down is not positive but
-                    -- negative. In other words, we need to flip the
-                    -- y-axis relative to the window. Hence
-                    -- Window.height.
-                    {- let recombobulate (x, y) h = mapBoth toFloat
-                                                <| (x, h - y) 
-                 in map2 recombobulate -} map (mapBoth toFloat) Mouse.position -- Window.height
+mousePosition =
+                    map (mapBoth toFloat) Mouse.position
 
 -- }}}1

@@ -16,7 +16,7 @@ import Html exposing ( Html )
 
 import DragAndDrop as Drag
 
-import Tuple exposing ( mapRight, mapBoth )
+import Tuple.Map exposing ( mapRight, mapBoth )
 import Maybe.Extra exposing ( isJust, isNothing )
 
 import Keyboard

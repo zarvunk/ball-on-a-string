@@ -11,7 +11,7 @@ import Html.Events exposing ( onMouseEnter, onMouseLeave )
 import Signal exposing ( Address )
 import Time exposing ( Time )
 
-import Tuple exposing (..)
+import Tuple.Map exposing (..)
 import Point exposing (..)
 
 

@@ -2,6 +2,7 @@ module Wheeeeeee where
 
 import Signal exposing (..)
 import Signal.Extra exposing ( mapMany, zip )
+import Signal.Discrete exposing ( whenEqual )
 import Window
 import Mouse
 import Time exposing ( Time, fps )
@@ -53,19 +54,10 @@ macroTransmitter = mailbox Nothing
 
 port macroSender : Signal (Task x ())
 port macroSender = sampleOn
-                        (notifyIf replaying)
+                        (whenEqual True replaying)
                         (map (replay macroTransmitter.address)
                              currentMacro)
 
-
--- `notifyIf` turns a Signal of Bools into a Signal of nulls
--- that emits an event every time the given Signal Bool emits
--- a True.
-notifyIf : Signal Bool -> Signal ()
-notifyIf = filterMap
-                ( \ whether -> if whether
-                                  then Just ()
-                                  else Nothing ) ()
 -- }}}1
 
 -------------------------------------------------------------------

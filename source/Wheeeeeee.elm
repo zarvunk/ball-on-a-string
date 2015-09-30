@@ -27,7 +27,6 @@ import Macro.Timed exposing (..)
 import Point exposing (..)
 import Ball exposing (..)
 
-{- the commented-out lines display useful info for debugging. -}
 main : Signal Html
 main = 
             (map2 (Ball.view transmitter.address)

@@ -1,19 +1,18 @@
 module Wheeeeeee where
 
 import Signal exposing (..)
--- import Signal.Extra exposing ( mapMany )
+import Signal.Extra exposing ( mapMany, zip )
+import Signal.Discrete exposing ( whenEqual )
 import Window
 import Mouse
 import Time exposing ( Time, fps )
 
+import Color
+import List
+
 import Task exposing ( Task )
 
-import Graphics.Element exposing ( Element, show
-                                 {- , below, above
-                                 , down, up
-                                 , flow -}
-                                 )
-import Color exposing (..)
+import Html exposing ( Html )
 
 import DragAndDrop as Drag
 
@@ -29,17 +28,11 @@ import Point exposing (..)
 import Ball exposing (..)
 
 {- the commented-out lines display useful info for debugging. -}
-main : Signal Element
+main : Signal Html
 main = 
-       -- mapMany (flow down)
-            -- [
-              (map2 Ball.view
+            (map2 (Ball.view transmitter.address)
                   Window.dimensions
                   ballState)
-            -- , (map show transmitter.signal)
-            -- , (map show ballState)
-            -- , (map show elasticState) ]
-
 
 -------------------------------------------------------------------
 -- # Macro stuff # {{{1
@@ -61,19 +54,10 @@ macroTransmitter = mailbox Nothing
 
 port macroSender : Signal (Task x ())
 port macroSender = sampleOn
-                        (notifyIf replaying)
+                        (whenEqual True replaying)
                         (map (replay macroTransmitter.address)
                              currentMacro)
 
-
--- `notifyIf` turns a Signal of Bools into a Signal of nulls
--- that emits an event every time the given Signal Bool emits
--- a True.
-notifyIf : Signal Bool -> Signal ()
-notifyIf = filterMap
-                ( \ whether -> if whether
-                                  then Just ()
-                                  else Nothing ) ()
 -- }}}1
 
 -------------------------------------------------------------------
@@ -86,7 +70,7 @@ ballState =
                , y = 0
                , vx = 0
                , vy = 0
-               , color = green
+               , color = Color.green
                , radius = 24   }
 
         surface = 0.002
@@ -96,10 +80,8 @@ ballState =
                   |> applyFriction surface dt
                   |> step dt
 
-        confluence = map2 (,)
-
      in foldp update ball
-           <| confluence
+           <| zip
                 (sampleOn timestream elasticState)
                 (timestream)
 
@@ -110,8 +92,8 @@ elasticState : Signal (Field {})
 elasticState = 
 
     let elastic =
-               { x = 0
-               , y = 0
+               { x = 78
+               , y = 78
                , accelAt d = d * 0.00008
                }
 
@@ -120,19 +102,6 @@ elasticState =
                 receiver
                 macroTransmitter.signal
 
-
--- `hoverable` is intended to do much the same thing as
--- Graphics.Input.hoverable, except it takes a Ball rather than an
--- Element. It detects whether the given point is within the
--- radius of the given Ball, and sends this information to the
--- given Address.
-hoverable : Address Bool -> Ball -> Point -> Task x ()
-hoverable address ball coords =
-                send address
-                   <| isWithinRadiusOf
-                        (ball.x, ball.y)
-                        ball.radius
-                        coords
 -- }}}1
 
 -------------------------------------------------------------------
@@ -142,65 +111,23 @@ transmitter : Mailbox Bool
 transmitter = mailbox False
 
 receiver : Signal (Maybe Drag.Action)
-receiver = let -- we don't care about the Nothings --- and believe
-               -- me, there are a *lot* of them. They rather clutter
-               -- up the macros. In fact, all those Nothings was
-               -- exactly what was slowing down the macro playback
-               -- and consuming so much memory. Folding them all up
-               -- wouldn't ordinarily be *so* bad --- though, seeing
-               -- as they're effectively no-ops, they'd still slow
-               -- the fold down, --- but the fold combines them as
-               -- *Tasks*, which, insofar as they are basically
-               -- promises, side effects reified into data, are
-               -- essentially lazy; so that all those Nothings were
-               -- not simply kept on the stack and combined as the
-               -- stack unwound, but were in fact turned into
-               -- closures stored on the heap; thus (a) having lots
-               -- of storage overhead, and (b) having to wait to be
-               -- garbage collected. Hence the memory usage kept
-               -- growing. Plus it always took a while to play back
-               -- all those no-op closures. ---Whereas with this
-               -- sieve, macros play back instantly and no lag
-               -- accumulates.
+receiver = let
+               -- we don't care about the Nothings --- they
+               -- were slowing down the macro playback and
+               -- consuming a lot of memory. Whereas with
+               -- this sieve, macros play back instantly and
+               -- no lag accumulates.
                sieve = filter isJust Nothing
-            in sieve <| Drag.track False transmitter.signal
+            in
+               sieve <| Drag.track False transmitter.signal
 
-port sender : Signal (Task x ())
-port sender = map2
-                (hoverable transmitter.address)
-                ballState
-                relativeMousePosition
 -- }}}1
 
 -------------------------------------------------------------------
 -- # Coordinates stuff # {{{1
 
 mousePosition : Signal (Float, Float)
-mousePosition =     -- The other thing about Mouse.position is that
-                    -- its y-coordinate is the positive distance down
-                    -- from the top of the window; but from a Form's
-                    -- perspective, down is not positive but
-                    -- negative. In other words, we need to flip the
-                    -- y-axis relative to the window. Hence
-                    -- Window.height.
-                let recombobulate (x, y) h = mapBoth toFloat
-                                                <| (x, h - y) 
-                 in map2 recombobulate Mouse.position Window.height
-
-windowCentre : Signal (Float, Float)
-windowCentre = map (mapBoth <| divideBy 2 << toFloat) Window.dimensions
-
-relativeMousePosition : Signal (Float, Float)
-relativeMousePosition =
-                 map2 relativeTo    -- because we render the Ball
-                      mousePosition -- as a Form, its coordinates
-                      windowCentre  -- are relative to the centre
-                      -- of the window, whereas Mouse.position is
-                      -- relative to the top left. This makes the
-                      -- mouse position relative to the window
-                      -- centre.
-
-divideBy : Float -> Float -> Float
-divideBy = flip (/)
+mousePosition =
+                    map (mapBoth toFloat) Mouse.position
 
 -- }}}1

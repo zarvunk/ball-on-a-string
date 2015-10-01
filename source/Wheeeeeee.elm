@@ -65,24 +65,27 @@ port macroSender = sampleOn
 ballState : Signal Ball
 ballState = 
 
-    let ball = { x = 0
+    let initialBall =
+               { x = 0
                , y = 0
                , vx = 0
                , vy = 0
                , color = Color.green
-               , radius = 24   }
+               , radius = 24
+               }
 
-        surface = 0.002
-
-        update (field, dt) body =
-             body |> actOn field dt
-                  |> applyFriction surface dt
-                  |> step dt
-
-     in foldp update ball
+     in foldp ballUpdate initialBall
            <| zip
                 (sampleOn timestream elasticState)
                 (timestream)
+
+ballUpdate : (Field {}, Time) -> Ball -> Ball
+ballUpdate (field, dt) body =
+     body |> actOn field dt
+          |> applyFriction surface dt
+          |> step dt
+
+surface = 0.002
 
 timestream : Signal Time
 timestream = fps 30
@@ -90,13 +93,15 @@ timestream = fps 30
 elasticState : Signal (Field {})
 elasticState = 
 
-    let elastic =
+    let
+        initialElastic =
                { x = 78
                , y = 78
                , accelAt d = d * 0.00008
                }
 
-     in foldp drag elastic
+     in
+        foldp drag initialElastic
            <| merge
                 receiver
                 macroTransmitter.signal

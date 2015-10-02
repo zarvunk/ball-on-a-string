@@ -49,18 +49,18 @@ drag maction thing =
                     Drag.Lift -> 
                         thing
                     Drag.MoveBy vector ->
-                        move thing <| mapBoth toFloat vector
+                        move (mapBoth toFloat vector) thing
                     Drag.Release -> 
                         thing
 
-move : Entity e -> Point -> Entity e
-move thing (x, y) =
+move : Point -> Entity e -> Entity e
+move (x, y) thing =
                         { thing | x <- thing.x + x
                                 , y <- thing.y + y }
 
 step : Time -> Body b -> Body b
 step dt body =
-               move body <| mapBoth ((*) dt) (body.vx, body.vy)
+               move (mapBoth ((*) dt) (body.vx, body.vy)) body
 
 actOn : Field f -> Time -> Body b -> Body b
 actOn field dt body =

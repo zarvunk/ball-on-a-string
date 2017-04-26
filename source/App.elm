@@ -1,4 +1,4 @@
-module Wheeeeeee where
+module App where
 
 import Signal exposing (..)
 import Signal.Extra exposing ( mapMany, zip )

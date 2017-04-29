@@ -1,137 +1,114 @@
-module App where
+module App exposing ( main )
 
-import Signal exposing (..)
-import Signal.Extra exposing ( mapMany, zip )
-import Signal.Discrete exposing ( whenEqual )
-import Window
-import Mouse
-import Time exposing ( Time, fps )
-
+import Html exposing ( Html, program )
+import Svg exposing ( Svg, svg, circle )
+import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
+import Time exposing ( Time )
 import Color
-import List
 
-import Task exposing ( Task )
+import Draggable as Drag exposing ( Delta )
+import Mechanics
+import AnimationFrame as Frame
+import Window
 
-import Html exposing ( Html )
-
-import DragAndDrop as Drag
-
-import Tuple.Map exposing ( mapRight, mapBoth )
-import Maybe.Extra exposing ( isJust, isNothing )
-
-import Keyboard
-import Char
-
-import Macro.Timed exposing (..)
-
-import Point exposing (..)
 import Ball exposing (..)
 
-main : Signal Html
-main = 
-            (map2 (Ball.view transmitter.address)
-                  Window.dimensions
-                  ballState)
+main : Program Never State Msg
+main =
+    Html.program
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions }
 
--------------------------------------------------------------------
--- # Macro stuff # {{{1
+type alias State =
+    { ball : Ball
+    , friction : HasField ()
+    , elastic : HasField Entity
+    , drag : Drag.State EntityID
+    , windowSize : Window.Size
+    }
 
-recording : Signal Bool
-recording = Keyboard.isDown <| Char.toCode 'R'
+type Msg = DragMoveBy Delta
+         | DragMsg (Drag.Msg EntityID)
+         | NextFrame Time
+         | WindowResized Window.Size
 
-replaying : Signal Bool
-replaying = Keyboard.isDown <| Char.toCode 'P'
-
-
-currentMacro : Signal (Macro (Maybe Drag.Action))
-currentMacro = record recording receiver
-
-
-macroTransmitter : Mailbox (Maybe (Drag.Action))
-macroTransmitter = mailbox Nothing
-
-
-port macroSender : Signal (Task x ())
-port macroSender = sampleOn
-                        (whenEqual True replaying)
-                        (map (replay macroTransmitter.address)
-                             currentMacro)
-
--- }}}1
-
--------------------------------------------------------------------
--- # Ball stuff # {{{1
-
-ballState : Signal Ball
-ballState = 
-
-    let initialBall =
-               { x = 0
-               , y = 0
-               , vx = 0
-               , vy = 0
-               , color = Color.green
-               , radius = 24
-               }
-
-     in foldp ballUpdate initialBall
-           <| zip
-                (sampleOn timestream elasticState)
-                (timestream)
-
-ballUpdate : (Field {}, Time) -> Ball -> Ball
-ballUpdate (field, dt) body =
-     body |> actOn field dt
-          |> applyFriction surface dt
-          |> step dt
-
-surface = 0.002
-
-timestream : Signal Time
-timestream = fps 30
-
-elasticState : Signal (Field {})
-elasticState = 
-
-    let
-        initialElastic =
-               { x = 78
-               , y = 78
-               , accelAt d = d * 0.00008
-               }
-
-     in
-        foldp drag initialElastic
-           <| merge
-                receiver
-                macroTransmitter.signal
-
--- }}}1
-
--------------------------------------------------------------------
--- # Signal graph stuff # {{{1
-
-transmitter : Mailbox Bool
-transmitter = mailbox False
-
-receiver : Signal (Maybe Drag.Action)
-receiver = let
-               -- we don't care about the Nothings --- they
-               -- were slowing down the macro playback and
-               -- consuming a lot of memory. Whereas with
-               -- this sieve, macros play back instantly and
-               -- no lag accumulates.
-               sieve = filter isJust Nothing
+update : Msg -> State -> (State, Cmd Msg)
+update msg ({ ball, elastic, friction } as state) =
+    case msg of
+        DragMoveBy delta_xy ->
+            ( { state | elastic =
+                { elastic | being = move delta_xy elastic.being } }
+            , Cmd.none )
+        DragMsg dragMsg ->
+            Drag.update dragConfig dragMsg state
+        NextFrame delta_t ->
+            let
+                fields = [ accelOf friction, accelOf elastic ]
             in
-               sieve <| Drag.track False transmitter.signal
+                ( { state | ball =
+                            ball |> actOn fields delta_t
+                  }, Cmd.none )
+        WindowResized size ->
+            ( { state | windowSize = size }
+            , Cmd.none )
 
--- }}}1
+view : State -> Html Msg
+view { ball, elastic, windowSize } = 
+    svg [
+          Attrs.width  <| toString windowSize.width
+        , Attrs.height <| toString windowSize.height
+        ]
+        [
+          Svg.circle [
+              cx <| toString <| x ball
+            , cy <| toString <| y ball
+            , r  <| toString ball.radius
+            , color <| toString ball.color
+            , Drag.mouseTrigger elastic.being.id DragMsg
+            ]
+            []
+        ]
 
--------------------------------------------------------------------
--- # Coordinates stuff # {{{1
+init : (State, Cmd Msg)
+init = ( { ball = initialBall
+         , elastic = initialElastic
+         , friction = initialFriction
+         , drag = Drag.init
+         , windowSize = Window.Size 400 400 -- I don't know what to do here
+         }
+       , Cmd.none )
 
-mousePosition : Signal (Float, Float)
-mousePosition =
-                    map (mapBoth toFloat) Mouse.position
+initialBall : Ball
+initialBall =
+    { state = Mechanics.state2 (0, 0) (0, 0)
+    , id = 1
+    , color = Color.green
+    , radius = 24
+    }
 
--- }}}1
+initialElastic : HasField Entity
+initialElastic =
+    let
+        strength = 0.00008
+        being =
+            { state = Mechanics.state2 (200, 0) (200, 0)
+            , id = 2 }
+    in
+        elastic strength being
+
+initialFriction : HasField ()
+initialFriction =
+    friction 0.001
+
+dragConfig : Drag.Config EntityID Msg
+dragConfig =
+    Drag.basicConfig DragMoveBy
+
+subscriptions : State -> Sub Msg
+subscriptions { drag } =
+    Sub.batch
+        [ Frame.diffs NextFrame
+        , Window.resizes WindowResized
+        , Drag.subscriptions DragMsg drag ]

@@ -5,11 +5,13 @@ import Svg exposing ( Svg, svg, circle )
 import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
 import Time exposing ( Time )
 import Color
+import Char
 
 import Draggable as Drag exposing ( Delta )
 import Mechanics
 import AnimationFrame as Frame
 import Window
+import Keyboard
 
 import Ball exposing (..)
 
@@ -27,12 +29,15 @@ type alias State =
     , elastic : HasField Entity
     , drag : Drag.State EntityID
     , windowSize : Window.Size
+    , paused : Bool
     }
 
 type Msg = DragMoveBy Delta
          | DragMsg (Drag.Msg EntityID)
          | NextFrame Time
          | WindowResized Window.Size
+         | SetPaused Bool
+         | DoNothing
 
 update : Msg -> State -> (State, Cmd Msg)
 update msg ({ ball, elastic, friction } as state) =
@@ -52,6 +57,12 @@ update msg ({ ball, elastic, friction } as state) =
                   }, Cmd.none )
         WindowResized size ->
             ( { state | windowSize = size }
+            , Cmd.none )
+        SetPaused areWePaused ->
+            ( { state | paused = areWePaused }
+            , Cmd.none )
+        DoNothing ->
+            ( state
             , Cmd.none )
 
 view : State -> Html Msg
@@ -77,6 +88,7 @@ init = ( { ball = initialBall
          , friction = initialFriction
          , drag = Drag.init
          , windowSize = Window.Size 400 400 -- I don't know what to do here
+         , paused = False
          }
        , Cmd.none )
 
@@ -107,8 +119,25 @@ dragConfig =
     Drag.basicConfig DragMoveBy
 
 subscriptions : State -> Sub Msg
-subscriptions { drag } =
-    Sub.batch
-        [ Frame.diffs NextFrame
-        , Window.resizes WindowResized
-        , Drag.subscriptions DragMsg drag ]
+subscriptions { drag, paused } =
+    Sub.batch <|
+        if paused
+           then [ Keyboard.presses handleKeyPressPaused
+                , Window.resizes WindowResized ]
+           else [ Keyboard.presses handleKeyPressPlaying
+                , Window.resizes WindowResized
+                , Frame.diffs NextFrame
+                , Drag.subscriptions DragMsg drag ]
+
+handleKeyPressPaused : Char.KeyCode -> Msg
+handleKeyPressPaused code =
+    case Char.fromCode code of
+        ' ' -> NextFrame 0.1
+        'p' -> SetPaused False
+        _   -> DoNothing
+
+handleKeyPressPlaying : Char.KeyCode -> Msg
+handleKeyPressPlaying code =
+    case Char.fromCode code of
+        'p' -> SetPaused True
+        _   -> DoNothing

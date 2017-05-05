@@ -69,10 +69,13 @@ friction drag =
         , field = field }
 
 decelerate : Float -> Float -> Float
-decelerate a v =
-    if v >= 0
-       then -a
-       else  a
+decelerate drag velocity =
+    let
+        acceleration = min drag (abs velocity)
+     in
+        if velocity >= 0
+           then -acceleration
+           else  acceleration
 
 move : Delta -> Is thing -> Is thing
 move (dx, dy) thing =

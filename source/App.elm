@@ -3,15 +3,17 @@ module App exposing ( main )
 import Html exposing ( Html, program )
 import Svg exposing ( Svg, svg, circle )
 import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
+
 import Time exposing ( Time )
 import Color
 import Char
 
-import Draggable as Drag exposing ( Delta )
-import Mechanics
-import AnimationFrame as Frame
 import Window
 import Keyboard
+import AnimationFrame as Frame
+
+import Draggable as Drag exposing ( Delta )
+import Mechanics
 
 import Ball exposing (..)
 

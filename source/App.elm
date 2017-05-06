@@ -41,6 +41,15 @@ type Msg = DragMoveBy Delta
          | SetPaused Bool
          | DoNothing
 
+init : (State, Cmd Msg)
+init = ( { ball = initialBall
+         , elastic = initialElastic
+         , friction = initialFriction
+         , drag = Drag.init
+         , paused = False
+         }
+       , Cmd.none )
+
 update : Msg -> State -> (State, Cmd Msg)
 update msg ({ ball, elastic, friction } as state) =
     case msg of
@@ -55,7 +64,7 @@ update msg ({ ball, elastic, friction } as state) =
                 fields = [ accelOf friction, accelOf elastic ]
             in
                 ( { state | ball =
-                            ball |> actOn fields delta_t
+                        ball |> actOn fields delta_t
                   }, Cmd.none )
         SetPaused areWePaused ->
             ( { state | paused = areWePaused }
@@ -63,6 +72,17 @@ update msg ({ ball, elastic, friction } as state) =
         DoNothing ->
             ( state
             , Cmd.none )
+
+subscriptions : State -> Sub Msg
+subscriptions { drag, paused } =
+    Sub.batch <|
+        if paused
+        then
+            [ Keyboard.presses handleKeyPressPaused ]
+        else
+            [ Keyboard.presses handleKeyPressPlaying
+            , Frame.diffs NextFrame
+            , Drag.subscriptions DragMsg drag ]
 
 view : State -> Html Msg
 view { ball, elastic } =
@@ -77,6 +97,15 @@ view { ball, elastic } =
               , property.display := Css.Str "block" ]
         stylesheet =
             toStyleNode <| withRules [styleRules] newStylesheet
+        svgBall =
+            circle [
+              cx <| toString (x ball)
+            , cy <| toString (y ball)
+            , r  <| toString <| ball.radius
+            , fill <| encodeCssValue (Css.Col ball.color)
+            , Drag.mouseTrigger elastic.being.id DragMsg
+            ]
+            []
      in
         body
         []
@@ -85,26 +114,15 @@ view { ball, elastic } =
             Attrs.width "100%"
           , Attrs.height "100%"
           ]
-          [
-            Svg.circle [
-              cx <| toString (x ball)
-            , cy <| toString (y ball)
-            , r  <| toString <| ball.radius
-            , fill <| encodeCssValue (Css.Col ball.color)
-            , Drag.mouseTrigger elastic.being.id DragMsg
-            ]
-            []
-          ]
+          [ svgBall ]
         ]
 
-init : (State, Cmd Msg)
-init = ( { ball = initialBall
-         , elastic = initialElastic
-         , friction = initialFriction
-         , drag = Drag.init
-         , paused = False
-         }
-       , Cmd.none )
+(:=) : String -> CssValue -> Css.Declaration
+(:=) = (,)
+
+dragConfig : Drag.Config EntityID Msg
+dragConfig =
+    Drag.basicConfig DragMoveBy
 
 initialBall : Ball
 initialBall =
@@ -128,19 +146,6 @@ initialFriction : HasField ()
 initialFriction =
     friction 0.001
 
-dragConfig : Drag.Config EntityID Msg
-dragConfig =
-    Drag.basicConfig DragMoveBy
-
-subscriptions : State -> Sub Msg
-subscriptions { drag, paused } =
-    Sub.batch <|
-        if paused
-           then [ Keyboard.presses handleKeyPressPaused ]
-           else [ Keyboard.presses handleKeyPressPlaying
-                , Frame.diffs NextFrame
-                , Drag.subscriptions DragMsg drag ]
-
 handleKeyPressPaused : Char.KeyCode -> Msg
 handleKeyPressPaused code =
     case Char.fromCode code of
@@ -153,6 +158,3 @@ handleKeyPressPlaying code =
     case Char.fromCode code of
         'p' -> SetPaused True
         _   -> DoNothing
-
-(:=) : String -> CssValue -> Css.Declaration
-(:=) = (,)

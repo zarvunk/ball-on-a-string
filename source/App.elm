@@ -70,19 +70,18 @@ update msg ({ ball, elastic, friction } as state) =
 view : State -> Html Msg
 view { ball, elastic, windowSize } = 
     svg [
-          Attrs.width  <| toString windowSize.width
-        , Attrs.height <| toString windowSize.height
+        Attrs.width  <| toString windowSize.width
+      , Attrs.height <| toString windowSize.height
+      ]
+      [
+        Svg.circle [
+            cx <| toString (x ball)
+          , cy <| toString (y ball)
+          , r  <| toString ball.radius
+          , Drag.mouseTrigger elastic.being.id DragMsg
         ]
-        [
-          Svg.circle [
-              cx <| toString <| x ball
-            , cy <| toString <| y ball
-            , r  <| toString ball.radius
-            , color <| toString ball.color
-            , Drag.mouseTrigger elastic.being.id DragMsg
-            ]
-            []
-        ]
+        []
+    ]
 
 init : (State, Cmd Msg)
 init = ( { ball = initialBall

@@ -2,7 +2,7 @@ module App exposing ( main )
 
 import Html exposing ( Html, program )
 import Svg exposing ( Svg, svg, circle )
-import Svg.Attributes as Attrs exposing ( id, class, cx, cy, r, color )
+import Svg.Attributes as Attrs exposing ( cx, cy, r )
 
 import Time exposing ( Time )
 import Color

@@ -2,7 +2,7 @@ module App exposing ( main )
 
 import Html exposing ( Html, program )
 import Svg exposing ( Svg, svg, circle )
-import Svg.Attributes as Attrs exposing ( cx, cy, r )
+import Svg.Attributes as Attrs exposing ( cx, cy, r, fill )
 
 import Time exposing ( Time )
 import Color
@@ -14,6 +14,7 @@ import AnimationFrame as Frame
 
 import Draggable as Drag exposing ( Delta )
 import Mechanics
+import CssBasics as Css exposing ( encodeCssValue )
 
 import Ball exposing (..)
 
@@ -78,6 +79,7 @@ view { ball, elastic, windowSize } =
             cx <| toString (x ball)
           , cy <| toString (y ball)
           , r  <| toString ball.radius
+          , fill <| encodeCssValue (Css.Col ball.color)
           , Drag.mouseTrigger elastic.being.id DragMsg
         ]
         []

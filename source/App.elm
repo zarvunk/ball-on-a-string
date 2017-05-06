@@ -1,6 +1,6 @@
 module App exposing ( main )
 
-import Html exposing ( Html, program )
+import Html exposing ( Html, program, body )
 import Svg exposing ( Svg, svg, circle )
 import Svg.Attributes as Attrs exposing ( cx, cy, r, fill )
 
@@ -8,13 +8,14 @@ import Time exposing ( Time )
 import Color
 import Char
 
-import Window
 import Keyboard
 import AnimationFrame as Frame
 
 import Draggable as Drag exposing ( Delta )
 import Mechanics
-import CssBasics as Css exposing ( encodeCssValue )
+import CssBasics as Css exposing ( CssValue, encodeCssValue )
+import CssBasics.Properties exposing ( property )
+import Stylesheet exposing (..)
 
 import Ball exposing (..)
 
@@ -31,14 +32,12 @@ type alias State =
     , friction : HasField ()
     , elastic : HasField Entity
     , drag : Drag.State EntityID
-    , windowSize : Window.Size
     , paused : Bool
     }
 
 type Msg = DragMoveBy Delta
          | DragMsg (Drag.Msg EntityID)
          | NextFrame Time
-         | WindowResized Window.Size
          | SetPaused Bool
          | DoNothing
 
@@ -58,9 +57,6 @@ update msg ({ ball, elastic, friction } as state) =
                 ( { state | ball =
                             ball |> actOn fields delta_t
                   }, Cmd.none )
-        WindowResized size ->
-            ( { state | windowSize = size }
-            , Cmd.none )
         SetPaused areWePaused ->
             ( { state | paused = areWePaused }
             , Cmd.none )
@@ -69,28 +65,43 @@ update msg ({ ball, elastic, friction } as state) =
             , Cmd.none )
 
 view : State -> Html Msg
-view { ball, elastic, windowSize } = 
-    svg [
-        Attrs.width  <| toString windowSize.width
-      , Attrs.height <| toString windowSize.height
-      ]
-      [
-        Svg.circle [
-            cx <| toString (x ball)
-          , cy <| toString (y ball)
-          , r  <| toString ball.radius
-          , fill <| encodeCssValue (Css.Col ball.color)
-          , Drag.mouseTrigger elastic.being.id DragMsg
-        ]
+view { ball, elastic } =
+    let
+        styleRules =
+          newRuleSet
+            |> withSelectors
+              [ Tag "html", Tag "body" ]
+            |> withDeclarations
+              [ property.width := Css.Str "100%"
+              , property.height := Css.Str "100%"
+              , property.display := Css.Str "block" ]
+        stylesheet =
+            toStyleNode <| withRules [styleRules] newStylesheet
+     in
+        body
         []
-    ]
+        [ stylesheet
+        , svg [
+            Attrs.width "100%"
+          , Attrs.height "100%"
+          ]
+          [
+            Svg.circle [
+              cx <| toString (x ball)
+            , cy <| toString (y ball)
+            , r  <| toString <| ball.radius
+            , fill <| encodeCssValue (Css.Col ball.color)
+            , Drag.mouseTrigger elastic.being.id DragMsg
+            ]
+            []
+          ]
+        ]
 
 init : (State, Cmd Msg)
 init = ( { ball = initialBall
          , elastic = initialElastic
          , friction = initialFriction
          , drag = Drag.init
-         , windowSize = Window.Size 400 400 -- I don't know what to do here
          , paused = False
          }
        , Cmd.none )
@@ -125,10 +136,8 @@ subscriptions : State -> Sub Msg
 subscriptions { drag, paused } =
     Sub.batch <|
         if paused
-           then [ Keyboard.presses handleKeyPressPaused
-                , Window.resizes WindowResized ]
+           then [ Keyboard.presses handleKeyPressPaused ]
            else [ Keyboard.presses handleKeyPressPlaying
-                , Window.resizes WindowResized
                 , Frame.diffs NextFrame
                 , Drag.subscriptions DragMsg drag ]
 
@@ -144,3 +153,6 @@ handleKeyPressPlaying code =
     case Char.fromCode code of
         'p' -> SetPaused True
         _   -> DoNothing
+
+(:=) : String -> CssValue -> Css.Declaration
+(:=) = (,)
